@@ -1,0 +1,202 @@
+---
+title: "Week 2 Homework"
+author: "Heywood Lau"
+date: "1/18/2022"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r}
+#load data
+my_data<-read.delim("credit_card_data-headers.txt")
+
+#get the right library for cross validation
+library(caret)
+
+```
+
+```{r}
+#Question 3.1a
+library("kknn")
+library(data.table)
+#create an empty vector to store accuracy value for later
+accuracy <-c()
+
+#run a for loop for k to start from 1 to 50 to identify the best classifier
+for (i in 1:50){
+
+#use cross validation on all data from k = 1 to k = 50
+cross_val <- cv.kknn(formula = R1~., my_data, kcv = 10, k = i,scale=TRUE)
+
+#since the output will be a continuous variable, we will have to round the output, the model will have an output with y and yhat(prediction)
+cross_val_table = round(data.table(cross_val[[1]]))
+
+#get the sum of correct prediction which is when the y == yhat
+true_false_table<-(table(cross_val_table$y==cross_val_table$yhat))
+
+#show it in % format 
+true_false_table_percent<-prop.table(table(cross_val_table$y==cross_val_table$yhat))
+
+#only store the accuracy value from the 2 component of the output table
+
+#store the the accuracy % into a vector that we created earlier
+accuracy<- c(accuracy, true_false_table_percent[2])
+
+#print the final output from loop 1 to 50
+print(true_false_table_percent[2])
+
+}
+
+paste("the highest accuracy is when k = ", (which (accuracy == max(accuracy))) )
+```
+
+```{r}
+#Question 3.1b
+library("kknn")
+
+
+#split the data to training with 80% for training,  20% for valid, and 20% for testing using indexes, replaceable when drawn 
+row_vector <- sample(seq(1,3),size = nrow(my_data), replace = TRUE, prob=c(0.8,0.2,0.2))
+
+#define the train, valid, and test using the index vector created above
+training_data <- my_data[row_vector==1,1:11]
+valid_data <- my_data[row_vector==2,1:11]
+testing_data <- my_data[row_vector==3,1:11]
+
+
+#To identify which k value gives the best accuracy
+
+accuracy=c()
+
+for (i in 1:15){
+#use training data and valid data to see determine if this is a good model in cases where there are multiple model
+valid_model.kknn<- kknn(formula = R1~., training_data, valid_data, k = i,scale=TRUE)
+prediction_2 <- round(predict(valid_model.kknn))
+
+
+#second confusion matrix using training and valid data 
+CM_train_valid <- table(valid_data[,11],prediction_2)
+accuracy_train_valid<- (sum(diag(CM_train_valid)))/(sum(CM_train_valid))
+accuracy <- c(accuracy, accuracy_train_valid)
+}
+
+paste("the highest accuracy is when k = ", (which (accuracy == (max(accuracy)))))
+
+#get the combined vector, and train the model combining the (train + valid) and use it on test
+
+combined_data <- my_data[(row_vector==1 | row_vector==2),1:11]
+
+#train k-nearest neighbour model
+model.kknn<- kknn(formula = R1~., combined_data, testing_data, k = 12,scale=TRUE)
+prediction <- round(predict(model.kknn))
+
+#use the response column from the testing data, and put in a confusion matrix format
+CM_train_test <- table(testing_data[,11],prediction)
+
+
+#accuracy = getting the sum of(true positive and true negative) and divide by sum of all cells
+accuracy_train_test<- (sum(diag(CM_train_test)))/(sum(CM_train_test))
+print(accuracy_train_test)
+
+
+
+
+
+```
+
+```{r}
+#Question 4.1 
+#In my current day job working in one of the big four accouting firms, I work with multinational enterprise clients who engage in cross border transactions. Classification would come handy in identifying potential clients who would need our help in helping them in compliance and preparing documentations for the tax authority. The following predictors would be useful in identifying potential client opportunities: 
+
+#Whether annual consolidated revenue>750 million
+#Number of entities located in various countries 
+#potential taxable savings 
+#probability of getting audited based on quantum of cross border transactions
+```
+
+
+```{r}
+#Question 4.2 
+library(datasets)
+library(cluster)
+library(factoextra)
+library(purrr)
+set.seed(125)
+
+#put iris into dataframe called iris_data and ignore all missing data
+iris_data<- as.data.frame(iris)
+iris_data<- na.omit(iris_data)
+
+#scale the iris data set
+iris_data_scaled<- scale(iris_data[,(1:4)])
+
+#combine the 5th column and changing to numeric variable
+iris_data_scaled <- cbind(iris_data_scaled,iris_data[,5])
+
+summary(iris_data)
+head(iris)
+
+#no need to scale since they are length and width
+# by default I should be splitting to three clusters as there are three species
+kmean.model <- kmeans(iris_data_scaled[,1:4], centers=(3), nstart = 25 )
+
+
+#clustering visualization
+fviz_cluster(kmean.model, data = iris_data_scaled)
+
+#the within cluster sum of square measures the variability of observations within each cluster, minimizing the xij -zjk from lecture
+total_within_cluster <- function(k_neighbour){
+kmeans(iris_data_scaled, centers = k_neighbour, nstart=25)$tot.withinss
+}
+
+k_value <- 1:15
+
+within_cluster_sum_of_square <- map(k_value, total_within_cluster)
+
+#plot(x axis, yaxis, and styling), , use the elbow diagram to determine the optimal number of clusters 
+plot(k_value, within_cluster_sum_of_square, type ="b", pch=19, frame = FALSE, xlab="Number of clusters K", ylab="Total within-clusters sum of square")
+
+#since 3 clusters have the greatest marginal difference between total within cluster sum of square, therefore we should 3 clusters 
+kmean.model_4 <- kmeans(iris_data_scaled[,1:4], iter.max = 100,centers=(3), nstart = 20)
+kmean.model_3 <- kmeans(iris_data_scaled[,1:3], iter.max = 100,centers=(3), nstart = 20)
+kmean.model_2 <- kmeans(iris_data_scaled[,1:2], iter.max = 100,centers=(3), nstart = 20)
+kmean.model_1 <- kmeans(iris_data_scaled[,1], iter.max = 100,centers=(3), nstart = 20)
+
+
+
+
+#create empty vector for storing accuracy
+accuracy <- c()
+
+#create confusion matrix
+CM_1<- table(iris_data$Species, kmean.model_1$cluster)
+CM_2<- table(iris_data$Species, kmean.model_2$cluster)
+CM_3<- table(iris_data$Species, kmean.model_3$cluster)
+CM_4<- table(iris_data$Species, kmean.model_4$cluster)
+print("CM_1 is the following")
+print(CM_1)
+
+print("CM_2 is the following")
+print(CM_2)
+
+print("CM_3 is the following")
+print(CM_3)
+
+print("CM_4 is the following")
+print(CM_4)
+
+
+print(paste("1 variable accuracy is", (max(CM_1[,1])+max(CM_1[,2])+max(CM_1[,3]))/sum(CM_1)))
+print(paste("2 variable accuracy is", (max(CM_2[,1])+max(CM_2[,2])+max(CM_2[,3]))/sum(CM_2)))
+print(paste("3 variable accuracy is", (max(CM_3[,1])+max(CM_3[,2])+max(CM_3[,3]))/sum(CM_3)))
+print(paste("4 variable accuracy is", (max(CM_4[,1])+max(CM_4[,2])+max(CM_4[,3]))/sum(CM_4)))
+
+#therefore, using all variables produce the highest accuracy
+
+
+```
+
+
+

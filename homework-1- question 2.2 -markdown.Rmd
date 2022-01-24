@@ -1,0 +1,86 @@
+---
+title: "Homework 1"
+author: "Heywood Lau"
+date: "1/12/2022"
+output: html_document
+---
+
+```{r}
+#load data
+my_data<-read.delim("credit_card_data-headers.txt")
+```
+
+```{r}
+#clean the data, use the first 10 columns as a matrix and the response as a vector
+matrix <- data.matrix(my_data[,1:10])
+vector_outcome <- as.vector(my_data[,11])
+```
+
+
+
+```{r}
+#train svm
+#install.packages("kernlab")
+#creating separate models with various C values, it could be run in a loop 
+library("kernlab")
+svm_model_100 <- ksvm(matrix,vector_outcome,type="C-svc",kernel="vanilladot",C=100,scaled=TRUE)
+svm_model_25 <- ksvm(matrix, vector_outcome, type="C-svc",kernel="vanilladot",C=25,scaled=TRUE)
+svm_model_50 <- ksvm(matrix, vector_outcome, type="C-svc",kernel="vanilladot",C=50,scaled=TRUE)
+svm_model_75 <- ksvm(matrix, vector_outcome, type="C-svc",kernel="vanilladot",C=75,scaled=TRUE)
+
+
+```
+
+```{r}
+
+#testing which C values have the highest prediction score using predictors 1 to 10
+pred_100 <- predict(svm_model_100,my_data[,1:10])
+print(sum(pred_100 == my_data[,11]) / nrow(my_data))
+
+pred_75 <- predict(svm_model_75,my_data[,1:10])
+print(sum(pred_75 == my_data[,11]) / nrow(my_data))
+
+
+pred_50 <- predict(svm_model_50,my_data[,1:10])
+print(sum(pred_50 == my_data[,11]) / nrow(my_data))
+
+pred_25 <- predict(svm_model_25,my_data[,1:10])
+print(sum(pred_25 == my_data[,11]) / nrow(my_data))
+
+print("As there are no difference by varying the levels of C values, therefore, changing the c value in this particular model would not change the accuracy of the classifer")
+
+```
+
+```{r}
+#install.packages("kknn")
+library("kknn")
+#setting a seed where the results could be repeated
+set.seed(125)
+
+#identify the dimension of the the dataset, 654 rows 
+dimension <- dim(my_data)[1]
+
+#split the data
+sample_data <- sample(1:dimension, size = round(dimension/2),replace = FALSE)
+
+#create the training model and the validation model
+my_data.learn <- my_data[-sample_data,]
+my_data.test <- my_data[sample_data,]
+
+#create an empty list where it can store the accuracy value after 
+accuracy_list= c()
+
+#loop through the size of the training dataset, and apply it on the testing data set, identifying the highest k value 
+for (i in 1:327){
+
+my_data.kknn <- kknn(formula = R1~., my_data.learn, my_data.test, k = i,scale=TRUE)
+
+prediction <- round(predict(my_data.kknn))
+  CM <- table(my_data.test[,11], prediction)
+  accuracy <- (sum(diag(CM)))/sum(CM)
+  accuracy_list <-append(accuracy_list, accuracy)
+}
+
+paste("the greatest accuracy is when k = ",(match(max(accuracy_list), accuracy_list)),"accuracy is ", accuracy_list[match(max(accuracy_list), accuracy_list)])
+```
+
