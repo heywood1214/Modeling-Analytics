@@ -1,0 +1,86 @@
+---
+title: "Homework 3_New Draft"
+author: "Heywood Lau"
+date: "2/1/2022"
+output: html_document
+---
+
+
+```{r}
+#Question 6.1
+#As inflation arises, detecting abnormalies in trading activities in conjuction with the timeseries data of inflation spikes can be a good exercise of using CUSUM technique. We can plot the historical data of closing prices for S&P 500 and using the standardization method of CUSUM, subtracting each point by the mean and divide by the standardization. I think the threshold should be a relatively high values, as we don't need to be able to detect each change, and we can plot it against time series of data of when interest rate increases, to match the sentiment and trading activities of the market. Therefore the C-value could be large. 
+```
+
+
+```{r}
+temp_data <- read.delim("C:/Users/heywo/OneDrive - Queen's University/Georgia Tech/ISYE 6501/Week 3 Homework/Homework/temps.txt",header=TRUE)
+
+#preview temperature data
+head(temp_data)
+
+#create empty vector to store the average temperature annually and the standard deviation in changes annually for all columns
+average_temp_annual <- c()
+standard_deviation <-c()
+
+for (i in 2:length(temp_data)){
+  average_temp_annual <- c(average_temp_annual, mean(temp_data[,i]))
+  standard_deviation <- c( standard_deviation, sd(temp_data[,i]))
+
+}
+
+print(average_temp_annual)
+print(standard_deviation)
+
+#create a second data_frame and deploy the CUSUM technique by subtracting each value by the mean and 1 standard deviation to eliminate the random effect
+
+
+#normalize and create a dataframe to detect changes using CUSUM technique
+temp_data_2 <- (temp_data[2: length(temp_data)])-average_temp_annual- standard_deviation
+temp_dataframe_2 <- cbind(temp_data[,1], temp_data_2)
+head(temp_dataframe_2)
+
+summary(temp_dataframe_2)
+
+
+#create a function that will be used to create a dataframe where it contains daily % temperature changes
+percent_change <- function(first_value, second_value){
+  percentage_change <- ((second_value-first_value)/first_value)
+return (percentage_change)  
+}
+
+
+percent_vector <- c()
+
+#initialize the dataframe with taking the normalized dataframe
+st_value_vector <- data.frame((temp_dataframe_2)[,1])
+st_value_vector_2 <- c()
+
+#for each column and each row of each column, convert them to % changes comparing period T and period T-1
+for (i in 2:length(temp_dataframe_2)){
+  for (j in 1:length(temp_dataframe_2[,i])){
+    percent_vector<- c(percent_vector,(percent_change(temp_dataframe_2[j,i],temp_dataframe_2[j+1,i])))
+  }
+    st_value_vector_2<- cbind(st_value_vector_2, percent_vector)
+}
+
+#combine with the date column
+st_value_vector <- cbind(st_value_vector, st_value_vector_2)
+
+#create a new column where it stores the average temperature for a specific date across 20 years
+row_mean <- rowMeans((st_value_vector[,2:ncol(st_value_vector)]), na.rm=TRUE)
+
+#append that to the original dataframe
+st_value_vector <- cbind(st_value_vector, format(round(row_mean,2)))
+
+#Plot the average temperature change for each date across 20 years in % changes(represeting each data point)
+plot(row_mean, ylim = c(-7,7))
+
+#as we can tell from the data after index 90 the average temperature changed has stablized, and there are no more significant drops in temperature 
+
+paste("the weather starts cooling off around ", st_value_vector[90,1])
+
+
+#Question 6.2
+#As I have created a separate vector where it utilizes the average temperature per date for 20 years, and as you could notice from the plot, the average temperature have not been increasing which indicated that the Atlanta's summer climate have not gotten warmer between July 1st to Oct31st 
+
+```
