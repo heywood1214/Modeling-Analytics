@@ -1,0 +1,123 @@
+---
+title: "Homework 8"
+author: "Heywood Lau"
+date: "3/6/2022"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+
+my_data = my_data <- read.delim("C:/Users/heywo/OneDrive - Queen's University/Georgia Tech/ISYE 6501/Week 8 Homework/uscrime.txt")
+
+library(leaps)
+library(caret)
+library(magrittr)
+library(MASS)
+
+#scale the dataframe
+scale(my_data, center = TRUE, scale = TRUE)
+
+#run simple regression
+simple_reg <- lm(Crime~., data = my_data)
+
+#show the summary of the simple regression
+summary(simple_reg)
+
+#run the stepwise regression model, with both forward and backward, using the AIC method
+stepwise_model <- stepAIC(simple_reg, direction="both",trace = FALSE)
+
+
+print(stepwise_model)
+summary(stepwise_model)
+
+```
+
+
+```{r}
+#use split the data into 80% training and 20% testing
+sampling<- my_data$Crime %>% 
+  createDataPartition(p=0.8, list = FALSE)
+
+#use the index above to split the data to training + testing 
+training_data <- my_data[sampling,]
+test_data <- my_data[-sampling, ]
+
+
+#put all variables except the last column(response) as the model_x matrix
+model_x <- model.matrix(Crime~., training_data[,-1])
+
+#put vector of response into model_y
+model_y <- training_data$Crime  
+
+print(model_x)
+
+library(glmnet)
+
+#using alpha = 1 to define teh LASSO regression
+glmnet(model_x, model_y, alpha = 1, lambda = NULL)
+
+
+#LASSo regression, constraint to standard regression, using cross validation to determine optimal lambda value
+cv_1 <- cv.glmnet(model_x, model_y, alpha = 1)
+print(cv_1)
+str(cv_1)
+
+print(cv_1$lambda)
+
+#the best lambda value, lowest standard error 
+cv_1$lambda.min
+
+#lasso model
+lasso_model <-glmnet(model_x, model_y, alpha = 1, lambda = cv_1$lambda.min)
+
+print(lasso_model)
+print(coef(lasso_model))
+
+#predictions on the test data
+x_test <- model.matrix(Crime~., test_data[,-1])
+
+lasso_prediction <-lasso_model %>% predict(x_test) %>% as.vector()
+print(lasso_prediction)
+
+RMSE(lasso_prediction, test_data$Crime)
+R_squared <- R2(lasso_prediction, test_data$Crime)
+print(R_squared)
+
+```
+```{r}
+#Elastic net regression
+
+#use cross validation to train the model to find the best alpha and lambda
+elastic_model <- train(
+ model_y ~., data = cbind(model_x,model_y), method = "glmnet",
+  trControl = trainControl("cv", number = 10),
+  tuneLength = 10
+)
+
+print(elastic_model)
+
+#best tuning parameter
+elastic_model$bestTune
+
+#model prediction
+coef(elastic_model$finalModel, elastic_model$bestTune$lambda)
+
+#predictions on test data
+x_test <- model.matrix(Crime~., test_data[,-1])
+
+print(x_test)
+
+#use the elastic net regression model to predict 
+predictions <- elastic_model %>% predict(x_test)
+
+#evaluate the fit of the model
+RMSE <- RMSE(predictions,test_data$Crime)
+
+Rsquare <- R2(predictions,test_data$Crime)
+
+print(RMSE)
+print(Rsquare)
+
+```
+
