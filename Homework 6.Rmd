@@ -1,0 +1,75 @@
+---
+title: "Homework 6"
+author: "Heywood Lau"
+date: "2/18/2022"
+output: html_document
+---
+```{r}
+rm(list = ls())
+my_data <- read.delim("C:/Users/heywo/OneDrive - Queen's University/Georgia Tech/ISYE 6501/Week 6 Homework/uscrime.txt")
+
+PCA_analysis <-prcomp(my_data, scale = TRUE)
+
+print(PCA_analysis)
+
+#the summary provides the standard deviation in which explains the variance explained by each principal component 
+summary(PCA_analysis)
+
+#Based on the cumulative proportion of the components, it shows that the first 5 components explained over 85% of the variation
+
+
+str(PCA_analysis)
+
+#presents all 47 observations in each principal compoent out of 16 
+print(PCA_analysis$x)
+
+#show the mean of the each variable before scaling
+print(PCA_analysis$center)
+
+```
+
+```{r}
+#PC1 weighting for each variables
+PC1_weighting <- PCA_analysis$rotation[,1]
+print(PC1_weighting)
+sort(PC1_weighting)
+
+
+#create a new dataframe for regression
+pca_regression_df <- cbind(crime = my_data[,16], PCA_analysis$x[,1:5])
+pca_regression_df <- as.data.frame(pca_regression_df)
+
+#original linear regression
+lm_1 <- lm(Crime~., data=my_data)
+summary(lm_1)
+
+#use the PCA to perform simple linear regression
+lm_2 <- lm(crime~., data = pca_regression_df)
+summary(lm_2)
+
+#based on the results given, we could observe that the PCA provides a higher adjusted R-squared using only the first 5 components in order to evaluate the effect of the variables. 
+
+
+```
+```{r}
+library(matrixStats)
+
+#Transform to the original variables
+original_matrix <- my_data[,1:15]
+mu <- colMeans(original_matrix)
+
+PCA_analysis_2 <- prcomp(original_matrix,scale = TRUE)
+print(PCA_analysis_2$x)
+
+#getting the original coefficients using the first 5 components, by doing matrix multiplication with the transpose of the loading(rotations/convectors in the first 5 components, and multiply by the scores (x values) 
+Xhat <- PCA_analysis_2$x[,1:5] %*% t(PCA_analysis_2$rotation[,1:5])
+
+#add each observation by the mean to get the original coefficient
+Xhat <- scale(Xhat, center = -mu, scale=FALSE)
+
+
+#retrieve the updated coefficient based on the first 5 components
+print(Xhat)
+
+```
+
