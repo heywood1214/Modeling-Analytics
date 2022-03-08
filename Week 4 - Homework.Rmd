@@ -1,0 +1,209 @@
+---
+title: "Homework 4"
+author: "Heywood Lau"
+date: "2/6/2022"
+output: html_document
+---
+
+```{r}
+#To use exponential smoothing, it would be useful to understand if time series data could be used to understand the present state matters. For instance, we could use historical closing price of S&P500 for the past 15 years, to predict future S&Pclosing prices. Although it is a very simple model considering only cyclicality, trend, and weight of present times as alpha. Alpha should be closer to 1, as the recent times should be more impactful as the sentimental factors are short term swings that could impact the variance or volatility of the S&P500 index. 
+```
+
+
+
+
+
+
+```{r}
+temp_data <- read.delim("C:/Users/heywo/OneDrive - Queen's University/Georgia Tech/ISYE 6501/Week 4 Homework/temps.txt",header=TRUE)
+head(temp_data)
+```
+
+
+
+```{r}
+#Create a new dataframe that stacks the years and temperature 
+
+new_temp_dataframe <- c()
+#new_temp_dataframe$Date<- as.Date(temp_data$DAY,"%Y-%m-%d")
+
+#repeat the 16 times to retrieve the date and stack it into one column 
+date_data<- c()
+for (i in 1:16){
+  for (j in 1:length(temp_data[,1])){
+  date_data <- c(date_data, temp_data[j,1])
+  
+}
+}
+
+#convert the date vector into dataframe format
+date_data<- as.data.frame((date_data))
+
+
+#get all the temperature data annually from 1997 to 2011
+new_temp_column <- c()
+for (i in 2:17){
+  for (j in 1:length(temp_data[,i])){
+    new_temp_column<- c(new_temp_column,temp_data[j,i])
+  }
+}
+
+#convert the temperatures into a dataframe
+new_temp_column<- as.data.frame((new_temp_column))
+
+#combine the two dataframes into one, with two columns, stacking the year along with the second column with the temperature
+new_temp_dataframe<- cbind(date_data, new_temp_column)
+
+head(new_temp_dataframe)
+
+#rename the variables name to date and temperature
+colnames(new_temp_dataframe)<- c("Date","Temp")
+
+#converting the date from strings to time series data, using 123 data points per year, starting in 1996 July 1st
+new_temp_dataframe$Temp<- ts(new_temp_dataframe$Temp, frequency=123, start=c(1996,7,1))
+
+#preview the timeseries version of date
+print(new_temp_dataframe$Temp)
+str(new_temp_dataframe$Temp)
+
+
+#using decompose function to observed, trend, seasonality, and random effect, for tuning the parameters later
+components_df_time <- decompose(new_temp_dataframe$Temp)
+plot(components_df_time)
+#from the decomposition of time series data, you can observe that there is a cyclical pattern from the seasonality portion as it is July to Oct each year, and randomness is relatively similar. However, you are able to observe an increase at the end of the data around the year of 2011. 
+
+
+#We will forecast using the Holt Winters Model and compare it with the real data
+
+
+
+
+#fit holt-winters
+hw_model <- HoltWinters(new_temp_dataframe$Temp)
+hw_model_2<- HoltWinters(new_temp_dataframe$Temp, alpha = 0.6,beta=0.0, gamma = 0.6)
+hw_model_3<- HoltWinters(new_temp_dataframe$Temp, alpha = 0.7,beta=0.7, gamma = 0)
+
+
+print(hw_model)
+
+#black line is the actual data
+plot(hw_model, ylab="temperature")
+plot(hw_model_2)
+plot(hw_model_3)
+
+#therefore the default hw model fits the best
+plot(hw_model, ylab="temperature")
+lines(hw_model$fitted[,1], lty=1, col="orange",lwd = 2)
+
+
+#using a confidence interval of 95% predict the future temperature, and forecast the next four years, using the frequency = 123x3=492
+hw_model.predict <- predict(hw_model, 492, prediction.interval=TRUE, level=0.95)
+
+#preview the prediction model
+head(hw_model.predict)
+
+#red line is the predicted temperature in 2016, and upper boundary of the 95% confidence interval is presented in orange
+plot(hw_model, ylab ="temperature",xlim = c(1996,2015))
+lines(hw_model$fitted[,1],lty=1, col="blue")
+lines(hw_model.predict[,1],lty=1, col="red")
+lines(hw_model.predict[,2], lty=1, col="orange")
+
+
+
+full_temp_column <- c()
+for (i in 2:21){
+  for (j in 1:123){
+    full_temp_column<- c(full_temp_column,temp_data[j,i])
+  }
+}
+
+
+#convert the temperatures into a dataframe
+full_temp_column<- as.data.frame((new_temp_column))
+head(full_temp_column)
+
+match_date_vector <- c()
+match_date_vector<- 1:nrow(full_temp_column);match_date_vector
+
+
+match_date_vector <- as.data.frame(match_date_vector)
+
+compare_dataframe <- data.frame()
+compare_dataframe<- cbind(match_date_vector,full_temp_column)
+
+
+plot.ts(compare_dataframe$`(new_temp_column)`)
+
+
+#alpha is the weight you put on for the recent observations
+#beta is the trend, and higher beta refers to a higher weight on the recent trend
+#gamma is the seasonality component
+```
+
+
+
+```{r}
+
+#Create a new dataframe that stores all the data for plotting later
+full_temp_dataframe <- c()
+
+#repeat the 20 times to retrieve the date and stack it into one column 
+date_data_2<- c()
+for (i in 1:20){
+  for (j in 1:length(temp_data[,1])){
+  date_data_2 <- c(date_data_2, temp_data[j,1])
+  
+}
+}
+#convert the date vector into dataframe format
+date_data_2<- as.data.frame((date_data_2))
+
+
+#get all the temperature data annually from 1997 to 2015
+full_temp_column <- c()
+for (i in 2:21){
+  for (j in 1:length(temp_data[,i])){
+    full_temp_column<- c(full_temp_column,temp_data[j,i])
+  }
+}
+
+#convert the temperatures into a dataframe
+full_temp_columm<- as.data.frame((full_temp_column))
+
+#combine the two dataframes into one, with two columns, stacking the year along with the second column with the temperature
+full_temp_dataframe<- cbind(date_data_2, full_temp_column)
+
+head(full_temp_dataframe)
+
+#rename the variables name to date and temperature
+colnames(full_temp_dataframe)<- c("Date","Temp")
+
+
+full_temp_dataframe$Temp<- ts(full_temp_dataframe$Temp, frequency=123, start=c(1996,7,1))
+
+hw_model_full <- HoltWinters(full_temp_dataframe$Temp)
+plot(hw_model_full)
+
+
+```
+
+```{r}
+
+for (i in 1:18){
+plot(hw_model,xlim = c(1997+i,1998+i))
+lines(hw_model$fitted[,1],lty=1, col="blue")
+lines(hw_model.predict[,1],lty=1, col="red")
+lines(hw_model_full$fitted[,1],col="orange")
+}
+
+
+#If the unofficial end of summer has gotten later over the 20 years, we can estimate that high temperature would last longer in the later years than the earlier years, implying a longer summer.
+
+#As we could tell from the trends from 1997 to 2015, the unofficial summer has got later than previously, as the warmer period has been lasting longer until 
+
+
+
+
+```
+
+
