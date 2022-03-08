@@ -1,0 +1,109 @@
+---
+title: "Homework 5"
+author: "Heywood Lau"
+date: "2/11/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r}
+#Question 8.1 
+#Predicting housing prices would be quite useful if you were to enter the real estate market.Understanding what are the determining factors that would cause an increase of the real estate prices could be useful for the first time home buyer. First instance, understanding the key drviers/predictors in predicting housing prices (i.e. Neighbourhoods, Income level amongst residents, transportation score, population density, and number of rooms etc.)
+```
+
+```{r}
+#clear environment
+rm(list = ls())
+
+#load data
+crime_data <- read.delim(("C:/Users/heywo/OneDrive - Queen's University/Georgia Tech/ISYE 6501/Week 5 Homework/uscrime.txt"))
+
+#preview data
+head(crime_data)
+
+#understand the nature of the variables being set up, and notice there are some variables that are binary,integer,and numeric
+summary(crime_data)
+str(crime_data)
+#from the summary, we observe that the data has not been scaled, fortunately, they are all numerical variables except variable"SO" indicating whether it is a sourthern state
+```
+
+```{r}
+#Scale data
+
+#converting the two columns that are integer to numeric data
+crime_data$Pop <- as.numeric(crime_data$Pop)
+crime_data$Wealth <- as.numeric(crime_data$Wealth)
+
+#create an empty vector to store the scaled data for later
+scaled_data <-c()
+
+#create a function to scale the data by using the maximum, minimum, and and the observation of each column(predcitor) and scale it to between 0 to 1
+scale_function <- function(value, max, min){
+scaled_data <- ((value - min)/(max-min))  
+return (scaled_data)
+}
+
+#make a copy of the data so that it does not alter the original data when we perform any sort of transformation
+crime_copy<- crime_data
+
+
+#scale the data from column 3 to column 15 using the scale function, and loop through each value in each row. The reason why I am only scaling column 3 to 15 is for simplicity purposes, and column 2 is a binary variable which you don't need to scale, and for the response variable, it is better to store that one vector separatel
+new_list <- list()
+
+for (j in 3:((length(crime_data))-1)){
+scaled_data<-c()
+
+for (i in 1:length(crime_data[,j])){
+ new_observation<- scale_function(crime_data[i,j],max(crime_data[,j]),min(crime_data[,j]))
+  scaled_data<- c(scaled_data, new_observation)
+}
+
+new_list[j-2] <- list(scaled_data)
+
+}
+
+#column 3 to 15 transformation
+col_3_to_15 <- as.data.frame((new_list))
+
+#column 1 scaling as well
+col_1 <- c()
+for (i in 1:length(crime_data[,1])){
+ new_observation<- scale_function(crime_data[i,1],max(crime_data[,1]),min(crime_data[,1]))
+ col_1<- c(col_1, new_observation)
+}
+
+#create a complete dataframe to combine all the scaled columns
+complete_df <- data.frame()
+
+#combine column 1, column 2, and column 3 to 15 
+complete_df <- cbind(col_1, crime_copy$So,col_3_to_15)
+
+#get the column names from col 3 to 15 from the original data
+col_3_to_15_names <- names((crime_data[,(3:15)]))
+
+#rename the columns using the original column names
+colnames(complete_df)[3:15]<- (col_3_to_15_names)
+colnames(complete_df)[2]<- "So"
+
+#column 16, response variable, scaling as well
+col_16 <- c()
+for (i in 1:length(crime_data[,16])){
+ new_observation<- scale_function(crime_data[i,16],max(crime_data[,16]),min(crime_data[,16]))
+ col_16<- c(col_16, new_observation)
+}
+
+#create a complete dataframe including the last column 
+
+complete_df <- cbind(complete_df, col_16)
+
+#run the linear regression using column 16(crime rate as the response variables, and the rest of the 15 variables as predictors)
+
+linear_regression <- lm(col_16~., data = complete_df)
+print(linear_regression)
+print(summary(linear_regression))
+#based on the summary, you can observe that, only % of males aged 14024 in total population, education (mean yeasr of schooling of the population aged 25 years or over, per capita expenditure on police protection in 1959, unemployment rate of urban males between 35-39, income inequatliy, and probability of imprisoment are the variables that have statsitically significance using the p value < 0.1 (which is a loose threshold).
+
+#with respect to the quality of fit, using the Adjusted R square value showing that (0.7078), approximately 70% of the variation can be explained based on the 15 variables in the current model. However, with 15 variables, it is likely that the random effect could be part of the reasons to drive up the Adjusted R-squared which is part of the overfitting problem. 
+
+```
+
